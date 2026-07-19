@@ -71,8 +71,8 @@ function LoginScreen({ onLogin }) {
     <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(135deg,#1B2E4B,#243447)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: 48, width: 360, textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
         <div style={{ fontSize: 40, marginBottom: 8 }}>🚜</div>
-        <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, marginBottom: 4, letterSpacing: 1 }}>FiloTakip</div>
-        <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginBottom: 32 }}>FİLO &amp; GİDER TAKİP</div>
+        <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, marginBottom: 4, letterSpacing: 1 }}>Kontrol Masası</div>
+        <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginBottom: 32 }}>FİLO • GİDER • GELİR • ENVANTER</div>
         <input type="password" placeholder="Şifre girin..." value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && tryLogin()}
           style={{ ...inpSt, textAlign: "center", letterSpacing: 4, marginBottom: 12, border: `1px solid ${error ? C.red : C.border}` }} />
         {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 8 }}>Yanlış şifre!</div>}
@@ -745,7 +745,7 @@ export default function FiloTakip() {
   }
 
   if (!loggedIn) return <LoginScreen onLogin={handleLogin} />;
-  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 FiloTakip yükleniyor...</div>;
+  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 Kontrol Masası yükleniyor...</div>;
 
   const TABS = [
     { key: "dashboard", icon: "📊", label: "Ana Sayfa" },
@@ -760,7 +760,7 @@ export default function FiloTakip() {
     <div style={{ fontFamily: "'Inter','Helvetica Neue',sans-serif", background: C.bg, minHeight: "100vh", color: C.navy, display: "flex", flexDirection: "column" }}>
       <div style={{ background: C.navy, padding: "0 24px", display: "flex", alignItems: "center", height: 56, flexShrink: 0, position: "sticky", top: 0, zIndex: 50, overflowX: "auto" }}>
         <div style={{ marginRight: 20, paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
-          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>🚜 FiloTakip</div>
+          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>🚜 Kontrol Masası</div>
         </div>
         <div style={{ display: "flex", gap: 4, flex: 1 }}>
           {TABS.map((t) => (
@@ -782,7 +782,7 @@ export default function FiloTakip() {
       </div>
 
       <div style={{ position: "fixed", bottom: 8, right: 12, fontSize: 11, color: "rgba(27,46,75,0.35)", pointerEvents: "none", zIndex: 40 }}>
-        Duran Gönendi
+        Shadow Master
       </div>
     </div>
   );

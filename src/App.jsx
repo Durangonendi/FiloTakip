@@ -611,6 +611,42 @@ function HatirlaticilarView({ hatirlaticilar, araclar, reload }) {
   );
 }
 
+// ─── HAKKINDA ─────────────────────────────────────────────────────────────────
+function HakkindaView() {
+  const maddeler = [
+    "Şirketinizin her türlü takibini tek ekrandan, bire bir görmenizi sağlar.",
+    "İnternetin olduğu her yerden, anlık kayıtlar üzerinden gelir, gider, araçların durumu ve kasanızın genel durumunu net görürsünüz.",
+    "Borçlarınızı ve alacaklarınızı aynı şekilde tek yerden takip edersiniz.",
+    "Dosya arşivlemekle uğraşmazsınız, müşterilerinizi tek yerde tutarsınız.",
+    "Ödemelerinizi ve alacaklarınızı da aynı ekrandan görürsünüz.",
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
+      <div style={cardSt({ padding: 24 })}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy, marginBottom: 14 }}>Bu Program Ne İşe Yarar?</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {maddeler.map((m, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ color: C.green, fontWeight: 900, marginTop: 1 }}>✓</span>
+              <span style={{ fontSize: 14, color: C.navy, lineHeight: 1.5 }}>{m}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={cardSt({ padding: 24, borderLeft: `4px solid ${C.orange}` })}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: C.orange, marginBottom: 10 }}>⚠️ Önemli Not</div>
+        <div style={{ fontSize: 13, color: C.navy, lineHeight: 1.7 }}>
+          Bu program resmi bir muhasebe/faturalama sistemi <strong>değildir</strong>. Sadece sizin girdiğiniz verileri düzenler,
+          analiz eder ve kaydetmek istediğiniz hatırlatmaları size gösterir. Fatura kesmez, resmi belge üretmez, para
+          transferi/ödeme işlemi yapmaz. Doğruluğu tamamen girdiğiniz verilere bağlıdır — resmi muhasebeniz için mali
+          müşavirinizle çalışmaya devam etmelisiniz. Bu, işinizi kolaylaştıran kişisel bir takip aracıdır.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, hatirlaticilar }) {
   const [period, setPeriod] = useState("ay");
@@ -754,6 +790,7 @@ export default function FiloTakip() {
     { key: "gelirler", icon: "💰", label: "Gelirler" },
     { key: "envanter", icon: "📦", label: "Envanter" },
     { key: "hatirlaticilar", icon: "⏰", label: "Hatırlatmalar" },
+    { key: "hakkinda", icon: "ℹ️", label: "Hakkında" },
   ];
 
   return (
@@ -779,6 +816,7 @@ export default function FiloTakip() {
         {active === "gelirler" && <GelirlerView gelirler={gelirler} araclar={araclar} reload={loadAll} />}
         {active === "envanter" && <EnvanterView envanter={envanter} reload={loadAll} />}
         {active === "hatirlaticilar" && <HatirlaticilarView hatirlaticilar={hatirlaticilar} araclar={araclar} reload={loadAll} />}
+        {active === "hakkinda" && <HakkindaView />}
       </div>
 
       <div style={{ position: "fixed", bottom: 8, right: 12, fontSize: 11, color: "rgba(27,46,75,0.35)", pointerEvents: "none", zIndex: 40 }}>

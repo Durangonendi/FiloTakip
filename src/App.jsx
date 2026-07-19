@@ -780,6 +780,10 @@ export default function FiloTakip() {
         {active === "envanter" && <EnvanterView envanter={envanter} reload={loadAll} />}
         {active === "hatirlaticilar" && <HatirlaticilarView hatirlaticilar={hatirlaticilar} araclar={araclar} reload={loadAll} />}
       </div>
+
+      <div style={{ position: "fixed", bottom: 8, right: 12, fontSize: 11, color: "rgba(27,46,75,0.35)", pointerEvents: "none", zIndex: 40 }}>
+        Duran Gönendi
+      </div>
     </div>
   );
 }

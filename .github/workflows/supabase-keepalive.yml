@@ -1,0 +1,25 @@
+name: Supabase Keepalive
+
+# Prevents the free-tier Supabase project (shared by GNDOS, MTCRM, Kontrol Masasi)
+# from auto-pausing after ~1 week of inactivity. Runs entirely on GitHub's own
+# free scheduler - no dependency on Claude or any other external service.
+
+on:
+  schedule:
+    - cron: "0 1 * * *"  # 01:00 UTC daily (04:00 Turkiye saati)
+  workflow_dispatch: {}   # allows manual "Run workflow" button in GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase leads table
+        run: |
+          STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "https://ffqjotevmozjidhhjsqy.supabase.co/rest/v1/leads?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmcWpvdGV2bW96amlkaGhqc3F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzgwMzYsImV4cCI6MjA5ODI1NDAzNn0.tQ1SjyCnmSKqwrpQRQ177DR88XREG7QCwZ74gkAgCXs" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmcWpvdGV2bW96amlkaGhqc3F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzgwMzYsImV4cCI6MjA5ODI1NDAzNn0.tQ1SjyCnmSKqwrpQRQ177DR88XREG7QCwZ74gkAgCXs")
+          echo "Supabase keepalive response: HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Supabase returned HTTP $STATUS - project may be paused, check supabase.com dashboard"
+          fi

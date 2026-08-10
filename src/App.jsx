@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
-const PASSWORD = "Filo2026";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const C = {
   bg: "#F7F8FA", navy: "#1B2E4B", panel: "#EEF1F5", card: "#FFFFFF",
@@ -10,9 +11,15 @@ const C = {
   purple: "#9B59B6", smoke: "#7F8C8D", muted: "#BDC3C7", border: "#E0E6ED",
 };
 
-const GIDER_KATEGORILERI = ["Banka", "Personel", "Yakıt", "Araç", "Fatura", "Maliye ve Muhasebe", "Ofis", "Kasa", "Diğer"];
+const PIE_COLORS = [C.blue, C.orange, C.purple, C.green, C.red, "#16A085", "#F1C40F", "#E84393", C.smoke, "#2980B9"];
+
+const GIDER_KATEGORILERI = [
+  "Market", "Kira", "Fatura", "Ulaşım", "Sağlık", "Eğlence", "Giyim", "Eğitim", "Abonelik",
+  "Banka", "Personel", "Yakıt", "Araç", "Ofis", "Maliye ve Muhasebe", "Diğer",
+];
 const HATIRLATICI_TURLERI = ["Maaş", "SGK", "KDV", "Kredi", "Bakım", "Diğer"];
 const BAKIM_UYARI_ESIGI = 10; // sayaç eşiğe bu kadar kala uyar
+const KART_ODEME_UYARI_GUN = 5; // son ödeme gününe bu kadar gün kala uyar
 
 const fmt = (n) => `₺${Number(n || 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
 const todayStr = () => new Date().toISOString().split("T")[0];
@@ -30,24 +37,33 @@ function startOfPeriod(period) {
   return "1970-01-01";
 }
 
-// ─── DB ────────────────────────────────────────────────────────────────────
-const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+// ─── DB (Supabase client, otomatik user_id) ─────────────────────────────────
+async function getUserId() {
+  const { data } = await supabase.auth.getSession();
+  return data && data.session ? data.session.user.id : null;
+}
 
-async function dbGet(table, query = "") {
+async function dbGet(table, orderCol, ascending = false) {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*${query}`, { headers });
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    let q = supabase.from(table).select("*");
+    if (orderCol) q = q.order(orderCol, { ascending });
+    const { data, error } = await q;
+    if (error) { console.error(table, error); return []; }
+    return data || [];
   } catch (e) { return []; }
 }
 async function dbInsert(table, row) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify(row) });
+  const uid = await getUserId();
+  const { error } = await supabase.from(table).insert({ ...row, user_id: uid });
+  if (error) console.error(table, error);
 }
 async function dbUpdate(table, id, row) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "PATCH", headers, body: JSON.stringify(row) });
+  const { error } = await supabase.from(table).update(row).eq("id", id);
+  if (error) console.error(table, error);
 }
 async function dbDelete(table, id) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "DELETE", headers });
+  const { error } = await supabase.from(table).delete().eq("id", id);
+  if (error) console.error(table, error);
 }
 
 // ─── STYLE HELPERS ───────────────────────────────────────────────────────────
@@ -59,24 +75,72 @@ const inpSt = { background: "#F8F9FA", color: C.navy, border: `1px solid ${C.bor
 const lbl = { fontSize: 11, color: C.smoke, fontWeight: 600, letterSpacing: 0.5 };
 const row = { display: "flex", flexDirection: "column", gap: 5 };
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+// ─── AUTH (gerçek üyelik) ────────────────────────────────────────────────────
+function AuthScreen({ onAuthed }) {
+  const [mode, setMode] = useState("giris"); // giris | kayit
+  const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
-  const [error, setError] = useState(false);
-  function tryLogin() {
-    if (pass === PASSWORD) onLogin();
-    else { setError(true); setTimeout(() => setError(false), 2000); }
+  const [hesapTipi, setHesapTipi] = useState("bireysel"); // bireysel | isletme
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setError(""); setInfo("");
+    if (!email || !pass) { setError("E-posta ve şifre gerekli."); return; }
+    setBusy(true);
+    try {
+      if (mode === "giris") {
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (err) { setError("Giriş başarısız: " + err.message); setBusy(false); return; }
+        onAuthed();
+      } else {
+        const { data, error: err } = await supabase.auth.signUp({
+          email, password: pass, options: { data: { hesap_tipi: hesapTipi } },
+        });
+        if (err) { setError("Kayıt başarısız: " + err.message); setBusy(false); return; }
+        if (data && data.session) { onAuthed(); }
+        else { setInfo("Kayıt alındı! E-postana gelen onay linkine tıklayıp giriş yap."); setMode("giris"); }
+      }
+    } finally { setBusy(false); }
   }
+
   return (
-    <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(135deg,#1B2E4B,#243447)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: 48, width: 360, textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🚜</div>
-        <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, marginBottom: 4, letterSpacing: 1 }}>Kontrol Masası</div>
-        <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginBottom: 32 }}>FİLO • GİDER • GELİR • ENVANTER</div>
-        <input type="password" placeholder="Şifre girin..." value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && tryLogin()}
-          style={{ ...inpSt, textAlign: "center", letterSpacing: 4, marginBottom: 12, border: `1px solid ${error ? C.red : C.border}` }} />
-        {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 8 }}>Yanlış şifre!</div>}
-        <button onClick={tryLogin} style={{ ...bs(C.navy, "#fff"), width: "100%", padding: 12, fontSize: 14 }}>Giriş Yap</button>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(135deg,#1B2E4B,#243447)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🚜</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, letterSpacing: 1 }}>Kontrol Masası</div>
+          <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginTop: 4 }}>GELİR • GİDER • BÜTÇE • FİLO</div>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, marginBottom: 20, background: C.panel, borderRadius: 8, padding: 4 }}>
+          <button onClick={() => setMode("giris")} style={{ flex: 1, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: mode === "giris" ? "#fff" : "transparent", color: mode === "giris" ? C.navy : C.smoke }}>Giriş Yap</button>
+          <button onClick={() => setMode("kayit")} style={{ flex: 1, padding: 8, borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: mode === "kayit" ? "#fff" : "transparent", color: mode === "kayit" ? C.navy : C.smoke }}>Üye Ol</button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={row}><label style={lbl}>E-POSTA</label><input style={inpSt} type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+          <div style={row}><label style={lbl}>ŞİFRE</label><input style={inpSt} type="password" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} /></div>
+
+          {mode === "kayit" && (
+            <div style={row}>
+              <label style={lbl}>KULLANIM AMACI</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setHesapTipi("bireysel")} style={{ ...ob(hesapTipi === "bireysel" ? C.navy : C.smoke), flex: 1, background: hesapTipi === "bireysel" ? C.navy + "15" : "transparent" }}>👤 Bireysel</button>
+                <button onClick={() => setHesapTipi("isletme")} style={{ ...ob(hesapTipi === "isletme" ? C.navy : C.smoke), flex: 1, background: hesapTipi === "isletme" ? C.navy + "15" : "transparent" }}>🏢 İşletme / Filo</button>
+              </div>
+              <div style={{ fontSize: 11, color: C.smoke, marginTop: 2 }}>{hesapTipi === "bireysel" ? "Kişisel gelir-gider, kart ve bütçe takibi." : "Kişisel takibe ek olarak araç/makine ve envanter modülleri de açılır."}</div>
+            </div>
+          )}
+
+          {error && <div style={{ color: C.red, fontSize: 12 }}>{error}</div>}
+          {info && <div style={{ color: C.green, fontSize: 12 }}>{info}</div>}
+
+          <button onClick={submit} disabled={busy} style={{ ...bs(C.navy, "#fff"), width: "100%", padding: 12, fontSize: 14, opacity: busy ? 0.6 : 1 }}>
+            {busy ? "..." : mode === "giris" ? "Giriş Yap" : "Üye Ol"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -92,6 +156,39 @@ function Modal({ title, onClose, children }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: C.smoke, cursor: "pointer", fontSize: 22 }}>✕</button>
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── BASİT PASTA GRAFİK (saf SVG, ek kütüphane yok) ─────────────────────────
+function PieChart({ data, size = 160 }) {
+  const total = data.reduce((a, d) => a + d.value, 0);
+  if (total <= 0) return <div style={{ color: C.smoke, fontSize: 13, textAlign: "center", padding: 20 }}>Henüz veri yok</div>;
+  let acc = 0;
+  const r = size / 2;
+  const slices = data.map((d, i) => {
+    const start = (acc / total) * 2 * Math.PI;
+    acc += d.value;
+    const end = (acc / total) * 2 * Math.PI;
+    const x1 = r + r * Math.sin(start), y1 = r - r * Math.cos(start);
+    const x2 = r + r * Math.sin(end), y2 = r - r * Math.cos(end);
+    const large = end - start > Math.PI ? 1 : 0;
+    return { path: `M${r},${r} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z`, color: PIE_COLORS[i % PIE_COLORS.length], ...d };
+  });
+  return (
+    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {slices.map((s, i) => <path key={i} d={s.path} fill={s.color} />)}
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {slices.map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, display: "inline-block" }} />
+            <span style={{ color: C.navy }}>{s.label}</span>
+            <span style={{ color: C.smoke }}>{fmt(s.value)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -271,18 +368,19 @@ function FiloView({ araclar, calismaKayitlari, reload }) {
   );
 }
 
-// ─── GİDER FORM ──────────────────────────────────────────────────────────────
-function GiderForm({ araclar, onClose, onSave }) {
+// ─── GİDER FORM/VIEW ─────────────────────────────────────────────────────────
+function GiderForm({ araclar, kartlar, onClose, onSave }) {
   const [tarih, setTarih] = useState(todayStr());
   const [kategori, setKategori] = useState(GIDER_KATEGORILERI[0]);
   const [aciklama, setAciklama] = useState("");
   const [tutar, setTutar] = useState("");
   const [aracId, setAracId] = useState("");
+  const [kartId, setKartId] = useState("");
   const [odemeYontemi, setOdemeYontemi] = useState("Nakit");
 
   async function save() {
     if (!tutar) return;
-    await onSave({ tarih, kategori, aciklama, tutar: Number(tutar), arac_id: aracId || null, odeme_yontemi: odemeYontemi });
+    await onSave({ tarih, kategori, aciklama, tutar: Number(tutar), arac_id: aracId || null, kart_id: kartId || null, odeme_yontemi: odemeYontemi });
   }
   return (
     <Modal title="Yeni Gider" onClose={onClose}>
@@ -295,12 +393,22 @@ function GiderForm({ araclar, onClose, onSave }) {
         </div>
         <div style={row}><label style={lbl}>AÇIKLAMA</label><input style={inpSt} value={aciklama} onChange={(e) => setAciklama(e.target.value)} /></div>
         <div style={row}><label style={lbl}>TUTAR (₺) *</label><input style={inpSt} type="number" value={tutar} onChange={(e) => setTutar(e.target.value)} /></div>
-        <div style={row}><label style={lbl}>İLGİLİ ARAÇ (opsiyonel)</label>
-          <select style={{ ...inpSt, cursor: "pointer" }} value={aracId} onChange={(e) => setAracId(e.target.value)}>
-            <option value="">-</option>
-            {araclar.map((a) => <option key={a.id} value={a.id}>{a.ad}</option>)}
-          </select>
-        </div>
+        {kartlar.length > 0 && (
+          <div style={row}><label style={lbl}>HANGİ KART/HESAP (opsiyonel)</label>
+            <select style={{ ...inpSt, cursor: "pointer" }} value={kartId} onChange={(e) => setKartId(e.target.value)}>
+              <option value="">-</option>
+              {kartlar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}
+            </select>
+          </div>
+        )}
+        {araclar.length > 0 && (
+          <div style={row}><label style={lbl}>İLGİLİ ARAÇ (opsiyonel)</label>
+            <select style={{ ...inpSt, cursor: "pointer" }} value={aracId} onChange={(e) => setAracId(e.target.value)}>
+              <option value="">-</option>
+              {araclar.map((a) => <option key={a.id} value={a.id}>{a.ad}</option>)}
+            </select>
+          </div>
+        )}
         <div style={row}><label style={lbl}>ÖDEME YÖNTEMİ</label>
           <select style={{ ...inpSt, cursor: "pointer" }} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value)}>
             {["Nakit", "Banka", "Kredi Kartı", "Veresiye"].map((o) => <option key={o}>{o}</option>)}
@@ -312,7 +420,7 @@ function GiderForm({ araclar, onClose, onSave }) {
   );
 }
 
-function GiderlerView({ giderler, araclar, reload }) {
+function GiderlerView({ giderler, araclar, kartlar, butceler, reload }) {
   const [showForm, setShowForm] = useState(false);
   const [fKategori, setFKategori] = useState("Tümü");
   const aracAdi = (id) => araclar.find((a) => a.id === id)?.ad || "-";
@@ -323,13 +431,31 @@ function GiderlerView({ giderler, araclar, reload }) {
   const filtered = giderler.filter((g) => fKategori === "Tümü" || g.kategori === fKategori).sort((a, b) => (a.tarih < b.tarih ? 1 : -1));
   const toplam = filtered.reduce((a, g) => a + Number(g.tutar || 0), 0);
 
+  const buAyBaslangic = startOfPeriod("ay");
+  const butceUyarilari = butceler.map((b) => {
+    const harcanan = giderler.filter((g) => g.kategori === b.kategori && g.tarih >= buAyBaslangic).reduce((a, g) => a + Number(g.tutar || 0), 0);
+    return { ...b, harcanan, oran: b.aylik_limit > 0 ? harcanan / b.aylik_limit : 0 };
+  }).filter((b) => b.oran >= 0.8);
+
   return (
     <div>
-      {showForm && <GiderForm araclar={araclar} onClose={() => setShowForm(false)} onSave={save} />}
+      {showForm && <GiderForm araclar={araclar} kartlar={kartlar} onClose={() => setShowForm(false)} onSave={save} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Giderler</div>
         <button onClick={() => setShowForm(true)} style={bs(C.red, "#fff")}>+ Gider Ekle</button>
       </div>
+
+      {butceUyarilari.length > 0 && (
+        <div style={{ ...cardSt({ padding: 14 }), marginBottom: 14, border: `1px solid ${C.orange}` }}>
+          {butceUyarilari.map((b) => (
+            <div key={b.id} style={{ fontSize: 12, color: b.oran >= 1 ? C.red : C.orange, marginBottom: 4 }}>
+              {b.oran >= 1 ? "⚠ Bütçe aşıldı: " : "⚠ Bütçeye yaklaşıldı: "}
+              <b>{b.kategori}</b> — {fmt(b.harcanan)} / {fmt(b.aylik_limit)} (%{Math.round(b.oran * 100)})
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
         <select style={{ ...inpSt, width: "auto", cursor: "pointer" }} value={fKategori} onChange={(e) => setFKategori(e.target.value)}>
           <option>Tümü</option>{GIDER_KATEGORILERI.map((k) => <option key={k}>{k}</option>)}
@@ -374,14 +500,16 @@ function GelirForm({ araclar, onClose, onSave }) {
     <Modal title="Yeni Gelir" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={row}><label style={lbl}>TARİH</label><input style={inpSt} type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} /></div>
-        <div style={row}><label style={lbl}>AÇIKLAMA</label><input style={inpSt} value={aciklama} onChange={(e) => setAciklama(e.target.value)} placeholder="Örn. Makine satışı" /></div>
+        <div style={row}><label style={lbl}>AÇIKLAMA</label><input style={inpSt} value={aciklama} onChange={(e) => setAciklama(e.target.value)} placeholder="Örn. Maaş, ek iş, satış" /></div>
         <div style={row}><label style={lbl}>TUTAR (₺) *</label><input style={inpSt} type="number" value={tutar} onChange={(e) => setTutar(e.target.value)} /></div>
-        <div style={row}><label style={lbl}>İLGİLİ ARAÇ (opsiyonel)</label>
-          <select style={{ ...inpSt, cursor: "pointer" }} value={aracId} onChange={(e) => setAracId(e.target.value)}>
-            <option value="">-</option>
-            {araclar.map((a) => <option key={a.id} value={a.id}>{a.ad}</option>)}
-          </select>
-        </div>
+        {araclar.length > 0 && (
+          <div style={row}><label style={lbl}>İLGİLİ ARAÇ (opsiyonel)</label>
+            <select style={{ ...inpSt, cursor: "pointer" }} value={aracId} onChange={(e) => setAracId(e.target.value)}>
+              <option value="">-</option>
+              {araclar.map((a) => <option key={a.id} value={a.id}>{a.ad}</option>)}
+            </select>
+          </div>
+        )}
         <button onClick={save} style={{ ...bs(C.navy, "#fff"), padding: 12 }}>💾 Kaydet</button>
       </div>
     </Modal>
@@ -399,7 +527,7 @@ function GelirlerView({ gelirler, araclar, reload }) {
     <div>
       {showForm && <GelirForm araclar={araclar} onClose={() => setShowForm(false)} onSave={save} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Gelirler (araç kazançları hariç, diğer gelirler)</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Gelirler</div>
         <button onClick={() => setShowForm(true)} style={bs(C.green, "#fff")}>+ Gelir Ekle</button>
       </div>
       <div style={{ marginBottom: 14, fontSize: 13, color: C.smoke }}>{sorted.length} kayıt · Toplam <b style={{ color: C.green }}>{fmt(toplam)}</b></div>
@@ -420,6 +548,241 @@ function GelirlerView({ gelirler, araclar, reload }) {
         </table>
         {sorted.length === 0 && <div style={{ padding: 30, textAlign: "center", color: C.smoke }}>Kayıt yok</div>}
       </div>
+    </div>
+  );
+}
+
+// ─── KARTLAR / HESAPLAR ──────────────────────────────────────────────────────
+function KartForm({ onClose, onSave }) {
+  const [ad, setAd] = useState("");
+  const [tur, setTur] = useState("kredi_karti");
+  const [bakiye, setBakiye] = useState("");
+  const [sonOdemeGunu, setSonOdemeGunu] = useState("");
+
+  async function save() {
+    if (!ad) return;
+    await onSave({ ad, tur, bakiye: Number(bakiye) || 0, son_odeme_gunu: tur === "kredi_karti" && sonOdemeGunu ? Number(sonOdemeGunu) : null });
+  }
+  return (
+    <Modal title="Yeni Kart / Hesap Ekle" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={row}><label style={lbl}>AD *</label><input style={inpSt} value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Örn. Ziraat Kredi Kartı" /></div>
+        <div style={row}><label style={lbl}>TÜR</label>
+          <select style={{ ...inpSt, cursor: "pointer" }} value={tur} onChange={(e) => setTur(e.target.value)}>
+            <option value="kredi_karti">Kredi Kartı</option>
+            <option value="banka_hesabi">Banka Hesabı</option>
+            <option value="nakit">Nakit</option>
+          </select>
+        </div>
+        <div style={row}><label style={lbl}>GÜNCEL BAKİYE (₺)</label><input style={inpSt} type="number" value={bakiye} onChange={(e) => setBakiye(e.target.value)} placeholder="Kredi kartıysa borç tutarı" /></div>
+        {tur === "kredi_karti" && (
+          <div style={row}><label style={lbl}>SON ÖDEME GÜNÜ (ayın kaçı, 1-31)</label><input style={inpSt} type="number" min="1" max="31" value={sonOdemeGunu} onChange={(e) => setSonOdemeGunu(e.target.value)} placeholder="Örn. 15" /></div>
+        )}
+        <button onClick={save} style={{ ...bs(C.navy, "#fff"), padding: 12 }}>💾 Kaydet</button>
+      </div>
+    </Modal>
+  );
+}
+
+function gunFarki(tarih) {
+  const bugun = new Date(todayStr());
+  const hedef = new Date(tarih);
+  return Math.round((hedef - bugun) / 86400000);
+}
+
+function odemeGunuKalan(sonOdemeGunu) {
+  const bugun = new Date();
+  let hedef = new Date(bugun.getFullYear(), bugun.getMonth(), sonOdemeGunu);
+  if (hedef < bugun) hedef = new Date(bugun.getFullYear(), bugun.getMonth() + 1, sonOdemeGunu);
+  return Math.round((hedef - bugun) / 86400000);
+}
+
+function KartlarView({ kartlar, reload }) {
+  const [showForm, setShowForm] = useState(false);
+  async function save(data) { await dbInsert("kartlar", data); await reload(); setShowForm(false); }
+  async function guncelleBakiye(kart, yeniBakiye) { await dbUpdate("kartlar", kart.id, { bakiye: yeniBakiye }); await reload(); }
+  async function sil(id) { if (window.confirm("Silinsin mi?")) { await dbDelete("kartlar", id); await reload(); } }
+
+  return (
+    <div>
+      {showForm && <KartForm onClose={() => setShowForm(false)} onSave={save} />}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Kartlar / Hesaplar</div>
+        <button onClick={() => setShowForm(true)} style={bs(C.blue, "#fff")}>+ Kart / Hesap Ekle</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
+        {kartlar.map((k) => {
+          const kalan = k.son_odeme_gunu ? odemeGunuKalan(k.son_odeme_gunu) : null;
+          const yakin = kalan != null && kalan <= KART_ODEME_UYARI_GUN;
+          const turIkon = k.tur === "kredi_karti" ? "💳" : k.tur === "banka_hesabi" ? "🏦" : "💵";
+          return (
+            <div key={k.id} style={{ ...cardSt({ padding: 18 }), border: yakin ? `1px solid ${C.red}` : `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: C.navy }}>{turIkon} {k.ad}</div>
+                <button onClick={() => sil(k.id)} style={{ background: "none", border: "none", color: C.smoke, cursor: "pointer" }}>✕</button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                <input type="number" defaultValue={k.bakiye} onBlur={(e) => guncelleBakiye(k, Number(e.target.value) || 0)} style={{ ...inpSt, width: 120 }} />
+                <span style={{ fontSize: 12, color: C.smoke }}>₺ bakiye</span>
+              </div>
+              {k.son_odeme_gunu && (
+                <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: yakin ? C.red : C.smoke }}>
+                  {yakin ? "⚠ " : ""}Son ödeme: ayın {k.son_odeme_gunu}'i — {kalan} gün kaldı
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {kartlar.length === 0 && <div style={{ textAlign: "center", padding: 60, color: C.smoke }}>Henüz kart/hesap eklenmedi</div>}
+    </div>
+  );
+}
+
+// ─── BÜTÇE ────────────────────────────────────────────────────────────────────
+function ButceForm({ onClose, onSave }) {
+  const [kategori, setKategori] = useState(GIDER_KATEGORILERI[0]);
+  const [limit, setLimit] = useState("");
+  async function save() {
+    if (!limit) return;
+    await onSave({ kategori, aylik_limit: Number(limit) });
+  }
+  return (
+    <Modal title="Yeni Bütçe Limiti" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={row}><label style={lbl}>KATEGORİ</label>
+          <select style={{ ...inpSt, cursor: "pointer" }} value={kategori} onChange={(e) => setKategori(e.target.value)}>
+            {GIDER_KATEGORILERI.map((k) => <option key={k}>{k}</option>)}
+          </select>
+        </div>
+        <div style={row}><label style={lbl}>AYLIK LİMİT (₺) *</label><input style={inpSt} type="number" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
+        <button onClick={save} style={{ ...bs(C.navy, "#fff"), padding: 12 }}>💾 Kaydet</button>
+      </div>
+    </Modal>
+  );
+}
+
+function ButcelerView({ butceler, giderler, reload }) {
+  const [showForm, setShowForm] = useState(false);
+  async function save(data) { await dbInsert("butceler", data); await reload(); setShowForm(false); }
+  async function sil(id) { if (window.confirm("Silinsin mi?")) { await dbDelete("butceler", id); await reload(); } }
+  const buAyBaslangic = startOfPeriod("ay");
+
+  return (
+    <div>
+      {showForm && <ButceForm onClose={() => setShowForm(false)} onSave={save} />}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Bütçe</div>
+        <button onClick={() => setShowForm(true)} style={bs(C.purple, "#fff")}>+ Bütçe Limiti Ekle</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {butceler.map((b) => {
+          const harcanan = giderler.filter((g) => g.kategori === b.kategori && g.tarih >= buAyBaslangic).reduce((a, g) => a + Number(g.tutar || 0), 0);
+          const oran = b.aylik_limit > 0 ? Math.min(1, harcanan / b.aylik_limit) : 0;
+          const asildi = harcanan > b.aylik_limit;
+          return (
+            <div key={b.id} style={cardSt({ padding: 16 })}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontWeight: 700, color: C.navy }}>{b.kategori}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, color: asildi ? C.red : C.smoke, fontWeight: 700 }}>{fmt(harcanan)} / {fmt(b.aylik_limit)}</span>
+                  <button onClick={() => sil(b.id)} style={ob(C.smoke)}>Sil</button>
+                </div>
+              </div>
+              <div style={{ height: 8, background: C.panel, borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${oran * 100}%`, background: asildi ? C.red : oran > 0.8 ? C.orange : C.green, borderRadius: 4 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {butceler.length === 0 && <div style={{ textAlign: "center", padding: 60, color: C.smoke }}>Henüz bütçe limiti eklenmedi</div>}
+    </div>
+  );
+}
+
+// ─── BORÇ / ALACAK ────────────────────────────────────────────────────────────
+function BorcForm({ onClose, onSave }) {
+  const [tur, setTur] = useState("borc");
+  const [kisi, setKisi] = useState("");
+  const [tutar, setTutar] = useState("");
+  const [aciklama, setAciklama] = useState("");
+  const [vadeTarihi, setVadeTarihi] = useState("");
+  async function save() {
+    if (!kisi || !tutar) return;
+    await onSave({ tur, kisi, tutar: Number(tutar), aciklama, vade_tarihi: vadeTarihi || null, odendi: false });
+  }
+  return (
+    <Modal title="Yeni Borç / Alacak" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={row}><label style={lbl}>TÜR</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setTur("borc")} style={{ ...ob(C.red), flex: 1, background: tur === "borc" ? C.red + "15" : "transparent" }}>Borcum (Ödeyeceğim)</button>
+            <button onClick={() => setTur("alacak")} style={{ ...ob(C.green), flex: 1, background: tur === "alacak" ? C.green + "15" : "transparent" }}>Alacağım (Bana Ödenecek)</button>
+          </div>
+        </div>
+        <div style={row}><label style={lbl}>KİŞİ / KURUM *</label><input style={inpSt} value={kisi} onChange={(e) => setKisi(e.target.value)} /></div>
+        <div style={row}><label style={lbl}>TUTAR (₺) *</label><input style={inpSt} type="number" value={tutar} onChange={(e) => setTutar(e.target.value)} /></div>
+        <div style={row}><label style={lbl}>VADE TARİHİ (opsiyonel)</label><input style={inpSt} type="date" value={vadeTarihi} onChange={(e) => setVadeTarihi(e.target.value)} /></div>
+        <div style={row}><label style={lbl}>AÇIKLAMA</label><input style={inpSt} value={aciklama} onChange={(e) => setAciklama(e.target.value)} /></div>
+        <button onClick={save} style={{ ...bs(C.navy, "#fff"), padding: 12 }}>💾 Kaydet</button>
+      </div>
+    </Modal>
+  );
+}
+
+function BorclarView({ borclar, reload }) {
+  const [showForm, setShowForm] = useState(false);
+  async function save(data) { await dbInsert("borclar", data); await reload(); setShowForm(false); }
+  async function odendiIsaretle(id, deger) { await dbUpdate("borclar", id, { odendi: deger }); await reload(); }
+  async function sil(id) { if (window.confirm("Silinsin mi?")) { await dbDelete("borclar", id); await reload(); } }
+
+  const borclarim = borclar.filter((b) => b.tur === "borc" && !b.odendi);
+  const alacaklarim = borclar.filter((b) => b.tur === "alacak" && !b.odendi);
+  const odenenler = borclar.filter((b) => b.odendi);
+
+  function Liste({ items, renk }) {
+    return items.map((b) => (
+      <div key={b.id} style={{ ...cardSt({ padding: "12px 16px" }), display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{b.kisi}</span>
+          <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 700, color: renk }}>{fmt(b.tutar)}</span>
+          {b.vade_tarihi && <span style={{ marginLeft: 10, fontSize: 12, color: C.smoke }}>Vade: {b.vade_tarihi} ({gunFarki(b.vade_tarihi) >= 0 ? `${gunFarki(b.vade_tarihi)} gün kaldı` : `${-gunFarki(b.vade_tarihi)} gün geçti`})</span>}
+          {b.aciklama && <div style={{ fontSize: 12, color: C.smoke, marginTop: 2 }}>{b.aciklama}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => odendiIsaretle(b.id, true)} style={ob(C.green)}>Ödendi</button>
+          <button onClick={() => sil(b.id)} style={ob(C.smoke)}>Sil</button>
+        </div>
+      </div>
+    ));
+  }
+
+  return (
+    <div>
+      {showForm && <BorcForm onClose={() => setShowForm(false)} onSave={save} />}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.navy }}>Borç / Alacak</div>
+        <button onClick={() => setShowForm(true)} style={bs(C.orange, "#fff")}>+ Ekle</button>
+      </div>
+
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.red, marginBottom: 10 }}>Borçlarım ({fmt(borclarim.reduce((a, b) => a + Number(b.tutar), 0))})</div>
+      <div style={{ marginBottom: 20 }}>{borclarim.length ? <Liste items={borclarim} renk={C.red} /> : <div style={{ color: C.smoke, fontSize: 13 }}>Borç yok</div>}</div>
+
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.green, marginBottom: 10 }}>Alacaklarım ({fmt(alacaklarim.reduce((a, b) => a + Number(b.tutar), 0))})</div>
+      <div style={{ marginBottom: 20 }}>{alacaklarim.length ? <Liste items={alacaklarim} renk={C.green} /> : <div style={{ color: C.smoke, fontSize: 13 }}>Alacak yok</div>}</div>
+
+      {odenenler.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.smoke, marginBottom: 10 }}>Ödenenler / Kapananlar</div>
+          {odenenler.map((b) => (
+            <div key={b.id} style={{ ...cardSt({ padding: "10px 16px" }), display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, opacity: 0.6 }}>
+              <span style={{ fontSize: 12, color: C.smoke, textDecoration: "line-through" }}>{b.kisi} — {fmt(b.tutar)}</span>
+              <button onClick={() => sil(b.id)} style={ob(C.smoke)}>Sil</button>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -512,7 +875,7 @@ function HatirlaticiForm({ araclar, onClose, onSave }) {
           </select>
         </div>
         <div style={row}><label style={lbl}>AÇIKLAMA</label><input style={inpSt} value={aciklama} onChange={(e) => setAciklama(e.target.value)} /></div>
-        {bakimTuru ? (
+        {bakimTuru && araclar.length > 0 ? (
           <>
             <div style={row}><label style={lbl}>ARAÇ / MAKİNE</label>
               <select style={{ ...inpSt, cursor: "pointer" }} value={aracId} onChange={(e) => setAracId(e.target.value)}>
@@ -538,12 +901,6 @@ function HatirlaticiForm({ araclar, onClose, onSave }) {
       </div>
     </Modal>
   );
-}
-
-function gunFarki(tarih) {
-  const bugun = new Date(todayStr());
-  const hedef = new Date(tarih);
-  return Math.round((hedef - bugun) / 86400000);
 }
 
 function HatirlaticilarView({ hatirlaticilar, araclar, reload }) {
@@ -586,27 +943,31 @@ function HatirlaticilarView({ hatirlaticilar, araclar, reload }) {
         {tarihli.length === 0 && <div style={{ color: C.smoke, fontSize: 13 }}>Tarihli hatırlatma yok</div>}
       </div>
 
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Bakım (Sayaç Bazlı)</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {bakimli.map((h) => {
-          const arac = araclar.find((a) => a.id === h.arac_id);
-          const kalan = arac ? Number(h.hedef_sayac) - Number(arac.guncel_sayac) : null;
-          const yakin = kalan != null && kalan <= BAKIM_UYARI_ESIGI;
-          return (
-            <div key={h.id} style={{ ...cardSt({ padding: "12px 16px" }), display: "flex", justifyContent: "space-between", alignItems: "center", border: yakin ? `1px solid ${C.red}` : `1px solid ${C.border}` }}>
-              <div>
-                <span style={pill(C.orange)}>Bakım</span>
-                <span style={{ marginLeft: 10, fontSize: 13, color: C.navy }}>{aracAdi(h.arac_id)} — {h.aciklama || `${h.hedef_sayac} ${arac?.sayac_tipi}'te bakım`}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: yakin ? C.red : C.smoke }}>{kalan != null ? `${kalan} ${arac?.sayac_tipi} kaldı` : "-"}</span>
-                <button onClick={() => sil(h.id)} style={ob(C.smoke)}>Sil</button>
-              </div>
-            </div>
-          );
-        })}
-        {bakimli.length === 0 && <div style={{ color: C.smoke, fontSize: 13 }}>Bakım hatırlatması yok</div>}
-      </div>
+      {araclar.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Bakım (Sayaç Bazlı)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {bakimli.map((h) => {
+              const arac = araclar.find((a) => a.id === h.arac_id);
+              const kalan = arac ? Number(h.hedef_sayac) - Number(arac.guncel_sayac) : null;
+              const yakin = kalan != null && kalan <= BAKIM_UYARI_ESIGI;
+              return (
+                <div key={h.id} style={{ ...cardSt({ padding: "12px 16px" }), display: "flex", justifyContent: "space-between", alignItems: "center", border: yakin ? `1px solid ${C.red}` : `1px solid ${C.border}` }}>
+                  <div>
+                    <span style={pill(C.orange)}>Bakım</span>
+                    <span style={{ marginLeft: 10, fontSize: 13, color: C.navy }}>{aracAdi(h.arac_id)} — {h.aciklama || `${h.hedef_sayac} ${arac?.sayac_tipi}'te bakım`}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: yakin ? C.red : C.smoke }}>{kalan != null ? `${kalan} ${arac?.sayac_tipi} kaldı` : "-"}</span>
+                    <button onClick={() => sil(h.id)} style={ob(C.smoke)}>Sil</button>
+                  </div>
+                </div>
+              );
+            })}
+            {bakimli.length === 0 && <div style={{ color: C.smoke, fontSize: 13 }}>Bakım hatırlatması yok</div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -614,11 +975,11 @@ function HatirlaticilarView({ hatirlaticilar, araclar, reload }) {
 // ─── HAKKINDA ─────────────────────────────────────────────────────────────────
 function HakkindaView() {
   const maddeler = [
-    "Şirketinizin her türlü takibini tek ekrandan, bire bir görmenizi sağlar.",
-    "İnternetin olduğu her yerden, anlık kayıtlar üzerinden gelir, gider, araçların durumu ve kasanızın genel durumunu net görürsünüz.",
-    "Borçlarınızı ve alacaklarınızı aynı şekilde tek yerden takip edersiniz.",
-    "Dosya arşivlemekle uğraşmazsınız, müşterilerinizi tek yerde tutarsınız.",
-    "Ödemelerinizi ve alacaklarınızı da aynı ekrandan görürsünüz.",
+    "Gelir, gider, bütçe ve kart takibinizi tek ekrandan yönetmenizi sağlar.",
+    "İnternetin olduğu her yerden, anlık kayıtlar üzerinden gelir, gider, kart borçları ve genel durumunuzu net görürsünüz.",
+    "Borçlarınızı ve alacaklarınızı tek yerden takip edersiniz.",
+    "İsterseniz araç/makine ve envanter takibinizi de aynı sistemde tutarsınız.",
+    "Her kullanıcının verisi tamamen kendine özeldir, başka hiç kimse göremez.",
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
@@ -648,7 +1009,7 @@ function HakkindaView() {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, hatirlaticilar }) {
+function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, hatirlaticilar, kartlar, borclar }) {
   const [period, setPeriod] = useState("ay");
   const baslangic = startOfPeriod(period);
 
@@ -663,6 +1024,14 @@ function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, ha
     const g2 = calismaKayitlari.filter((k) => k.tarih >= baslangic).reduce((a, k) => a + Number(k.kazanc || 0), 0);
     return g1 + g2;
   }, [gelirler, calismaKayitlari, baslangic]);
+
+  const kategoriKirilimi = useMemo(() => {
+    const map = {};
+    giderler.filter((g) => g.tarih >= baslangic).forEach((g) => {
+      map[g.kategori] = (map[g.kategori] || 0) + Number(g.tutar || 0);
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([label, value]) => ({ label, value }));
+  }, [giderler, baslangic]);
 
   const gunler = useMemo(() => {
     const map = {};
@@ -692,6 +1061,8 @@ function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, ha
     }
     return false;
   });
+  const yakinKartlar = kartlar.filter((k) => k.son_odeme_gunu && odemeGunuKalan(k.son_odeme_gunu) <= KART_ODEME_UYARI_GUN);
+  const yakinBorclar = borclar.filter((b) => !b.odendi && b.vade_tarihi && gunFarki(b.vade_tarihi) <= 5);
 
   return (
     <div>
@@ -707,31 +1078,21 @@ function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, ha
         <div style={cardSt({ padding: 18 })}><div style={{ fontSize: 11, color: C.smoke, marginBottom: 6 }}>NET (KASA)</div><div style={{ fontSize: 24, fontWeight: 900, color: donemGelir - donemGider >= 0 ? C.green : C.red }}>{fmt(donemGelir - donemGider)}</div></div>
       </div>
 
-      {(dusukStok.length > 0 || yakinHatirlaticilar.length > 0) && (
+      {(dusukStok.length > 0 || yakinHatirlaticilar.length > 0 || yakinKartlar.length > 0 || yakinBorclar.length > 0) && (
         <div style={{ ...cardSt({ padding: 16 }), marginBottom: 20, border: `1px solid ${C.red}` }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.red, marginBottom: 8 }}>⚠ DİKKAT</div>
           {dusukStok.map((e) => <div key={e.id} style={{ fontSize: 13, color: C.navy, marginBottom: 4 }}>Stok azaldı: <b>{e.urun_adi}</b> ({e.miktar} {e.birim} kaldı)</div>)}
           {yakinHatirlaticilar.map((h) => <div key={h.id} style={{ fontSize: 13, color: C.navy, marginBottom: 4 }}>Yaklaşan: <b>{h.tur}</b> — {h.aciklama}</div>)}
+          {yakinKartlar.map((k) => <div key={k.id} style={{ fontSize: 13, color: C.navy, marginBottom: 4 }}>Kart ödemesi yaklaşıyor: <b>{k.ad}</b> — ayın {k.son_odeme_gunu}'i ({odemeGunuKalan(k.son_odeme_gunu)} gün kaldı)</div>)}
+          {yakinBorclar.map((b) => <div key={b.id} style={{ fontSize: 13, color: C.navy, marginBottom: 4 }}>Vade yaklaşıyor: <b>{b.kisi}</b> — {fmt(b.tutar)} ({b.tur === "borc" ? "ödenecek" : "alınacak"})</div>)}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
-        <div style={cardSt({ padding: 0 })}>
-          <div style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: C.navy, borderBottom: `1px solid ${C.border}` }}>Günlük Özet</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr>{["Tarih", "Gelir", "Gider", "Net"].map((h) => <th key={h} style={{ background: C.panel, color: C.smoke, padding: "8px 12px", textAlign: "left", fontSize: 11 }}>{h}</th>)}</tr></thead>
-            <tbody>{gunler.map(([tarih, v]) => (
-              <tr key={tarih}>
-                <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}` }}>{tarih}</td>
-                <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, color: C.green }}>{fmt(v.gelir)}</td>
-                <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, color: C.red }}>{fmt(v.gider)}</td>
-                <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, fontWeight: 700 }}>{fmt(v.gelir - v.gider)}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-          {gunler.length === 0 && <div style={{ padding: 24, textAlign: "center", color: C.smoke }}>Bu dönemde kayıt yok</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <div style={cardSt({ padding: 16 })}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 12 }}>Gider Dağılımı</div>
+          <PieChart data={kategoriKirilimi} />
         </div>
-
         <div style={cardSt({ padding: 16 })}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Envanter</div>
           {envanter.slice(0, 8).map((e) => (
@@ -743,13 +1104,29 @@ function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, ha
           {envanter.length === 0 && <div style={{ color: C.smoke, fontSize: 13 }}>Stok kalemi yok</div>}
         </div>
       </div>
+
+      <div style={cardSt({ padding: 0 })}>
+        <div style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: C.navy, borderBottom: `1px solid ${C.border}` }}>Günlük Özet</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead><tr>{["Tarih", "Gelir", "Gider", "Net"].map((h) => <th key={h} style={{ background: C.panel, color: C.smoke, padding: "8px 12px", textAlign: "left", fontSize: 11 }}>{h}</th>)}</tr></thead>
+          <tbody>{gunler.map(([tarih, v]) => (
+            <tr key={tarih}>
+              <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}` }}>{tarih}</td>
+              <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, color: C.green }}>{fmt(v.gelir)}</td>
+              <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, color: C.red }}>{fmt(v.gider)}</td>
+              <td style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, fontWeight: 700 }}>{fmt(v.gelir - v.gider)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        {gunler.length === 0 && <div style={{ padding: 24, textAlign: "center", color: C.smoke }}>Bu dönemde kayıt yok</div>}
+      </div>
     </div>
   );
 }
 
 // ─── ANA UYGULAMA ─────────────────────────────────────────────────────────────
 export default function FiloTakip() {
-  const [loggedIn, setLoggedIn] = useState(() => { try { return localStorage.getItem("filotakip_auth") === "1"; } catch (e) { return false; } });
+  const [session, setSession] = useState(undefined); // undefined = kontrol ediliyor, null = giriş yok
   const [active, setActive] = useState("dashboard");
   const [loading, setLoading] = useState(false);
   const [araclar, setAraclar] = useState([]);
@@ -758,37 +1135,54 @@ export default function FiloTakip() {
   const [gelirler, setGelirler] = useState([]);
   const [envanter, setEnvanter] = useState([]);
   const [hatirlaticilar, setHatirlaticilar] = useState([]);
+  const [kartlar, setKartlar] = useState([]);
+  const [butceler, setButceler] = useState([]);
+  const [borclar, setBorclar] = useState([]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const hesapTipi = session?.user?.user_metadata?.hesap_tipi || "bireysel";
+  const isletmeModu = hesapTipi === "isletme";
 
   async function loadAll() {
     setLoading(true);
-    const [a, ck, g, ge, e, h] = await Promise.all([
-      dbGet("araclar", "&order=ad.asc"),
-      dbGet("calisma_kayitlari", "&order=tarih.desc"),
-      dbGet("giderler", "&order=tarih.desc"),
-      dbGet("gelirler", "&order=tarih.desc"),
-      dbGet("envanter", "&order=urun_adi.asc"),
-      dbGet("hatirlaticilar", "&order=created_at.desc"),
+    const [a, ck, g, ge, e, h, k, b, bo] = await Promise.all([
+      dbGet("araclar", "ad"),
+      dbGet("calisma_kayitlari", "tarih"),
+      dbGet("giderler", "tarih"),
+      dbGet("gelirler", "tarih"),
+      dbGet("envanter", "urun_adi"),
+      dbGet("hatirlaticilar", "created_at"),
+      dbGet("kartlar", "created_at"),
+      dbGet("butceler", "created_at"),
+      dbGet("borclar", "created_at"),
     ]);
     setAraclar(a); setCalismaKayitlari(ck); setGiderler(g); setGelirler(ge); setEnvanter(e); setHatirlaticilar(h);
+    setKartlar(k); setButceler(b); setBorclar(bo);
     setLoading(false);
   }
 
-  useEffect(() => { if (loggedIn) loadAll(); }, [loggedIn]);
+  useEffect(() => { if (session) loadAll(); }, [session]);
 
-  function handleLogin() {
-    try { localStorage.setItem("filotakip_auth", "1"); } catch (e) {}
-    setLoggedIn(true);
-  }
-
-  if (!loggedIn) return <LoginScreen onLogin={handleLogin} />;
+  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 Yükleniyor...</div>;
+  if (!session) return <AuthScreen onAuthed={() => {}} />;
   if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 Kontrol Masası yükleniyor...</div>;
 
   const TABS = [
     { key: "dashboard", icon: "📊", label: "Ana Sayfa" },
-    { key: "filo", icon: "🚜", label: "Filo" },
     { key: "giderler", icon: "💸", label: "Giderler" },
     { key: "gelirler", icon: "💰", label: "Gelirler" },
-    { key: "envanter", icon: "📦", label: "Envanter" },
+    { key: "kartlar", icon: "💳", label: "Kartlar" },
+    { key: "butceler", icon: "🎯", label: "Bütçe" },
+    { key: "borclar", icon: "🤝", label: "Borç/Alacak" },
+    ...(isletmeModu ? [
+      { key: "filo", icon: "🚜", label: "Filo" },
+      { key: "envanter", icon: "📦", label: "Envanter" },
+    ] : []),
     { key: "hatirlaticilar", icon: "⏰", label: "Hatırlatmalar" },
     { key: "hakkinda", icon: "ℹ️", label: "Hakkında" },
   ];
@@ -806,15 +1200,18 @@ export default function FiloTakip() {
             </button>
           ))}
         </div>
-        <button onClick={() => { try { localStorage.removeItem("filotakip_auth"); } catch (e) {} setLoggedIn(false); }} style={{ ...ob("rgba(255,255,255,0.3)"), color: "rgba(255,255,255,0.5)", fontSize: 11, flexShrink: 0 }}>Çıkış</button>
+        <button onClick={() => supabase.auth.signOut()} style={{ ...ob("rgba(255,255,255,0.3)"), color: "rgba(255,255,255,0.5)", fontSize: 11, flexShrink: 0 }}>Çıkış</button>
       </div>
 
       <div style={{ flex: 1, padding: "24px 28px", overflowY: "auto", maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
-        {active === "dashboard" && <Dashboard araclar={araclar} calismaKayitlari={calismaKayitlari} giderler={giderler} gelirler={gelirler} envanter={envanter} hatirlaticilar={hatirlaticilar} />}
-        {active === "filo" && <FiloView araclar={araclar} calismaKayitlari={calismaKayitlari} reload={loadAll} />}
-        {active === "giderler" && <GiderlerView giderler={giderler} araclar={araclar} reload={loadAll} />}
+        {active === "dashboard" && <Dashboard araclar={araclar} calismaKayitlari={calismaKayitlari} giderler={giderler} gelirler={gelirler} envanter={envanter} hatirlaticilar={hatirlaticilar} kartlar={kartlar} borclar={borclar} />}
+        {active === "filo" && isletmeModu && <FiloView araclar={araclar} calismaKayitlari={calismaKayitlari} reload={loadAll} />}
+        {active === "giderler" && <GiderlerView giderler={giderler} araclar={araclar} kartlar={kartlar} butceler={butceler} reload={loadAll} />}
         {active === "gelirler" && <GelirlerView gelirler={gelirler} araclar={araclar} reload={loadAll} />}
-        {active === "envanter" && <EnvanterView envanter={envanter} reload={loadAll} />}
+        {active === "kartlar" && <KartlarView kartlar={kartlar} reload={loadAll} />}
+        {active === "butceler" && <ButcelerView butceler={butceler} giderler={giderler} reload={loadAll} />}
+        {active === "borclar" && <BorclarView borclar={borclar} reload={loadAll} />}
+        {active === "envanter" && isletmeModu && <EnvanterView envanter={envanter} reload={loadAll} />}
         {active === "hatirlaticilar" && <HatirlaticilarView hatirlaticilar={hatirlaticilar} araclar={araclar} reload={loadAll} />}
         {active === "hakkinda" && <HakkindaView />}
       </div>

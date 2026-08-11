@@ -76,7 +76,7 @@ const lbl = { fontSize: 11, color: C.smoke, fontWeight: 600, letterSpacing: 0.5 
 const row = { display: "flex", flexDirection: "column", gap: 5 };
 
 // ─── AUTH (gerçek üyelik) ────────────────────────────────────────────────────
-function AuthScreen({ onAuthed }) {
+function AuthScreen({ onAuthed, onBack }) {
   const [mode, setMode] = useState("giris"); // giris | kayit
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -107,10 +107,12 @@ function AuthScreen({ onAuthed }) {
 
   return (
     <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(135deg,#1B2E4B,#243447)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
+        {onBack && (
+          <button onClick={onBack} style={{ position: "absolute", top: 16, left: 16, background: "none", border: "none", color: C.smoke, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>← Anasayfa</button>
+        )}
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>💰</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, letterSpacing: 1 }}>Cebim</div>
+          <img src="/logo-cebim.png" alt="Cebim" style={{ height: 64, marginBottom: 4 }} />
           <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginTop: 4 }}>GELİR • GİDER • BÜTÇE • KART</div>
         </div>
 
@@ -141,6 +143,87 @@ function AuthScreen({ onAuthed }) {
             {busy ? "..." : mode === "giris" ? "Giriş Yap" : "Üye Ol"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AÇILIŞ SAYFASI (LANDING) ────────────────────────────────────────────────
+function LandingPage({ onStart }) {
+  const FEATURES = [
+    { icon: "💸", title: "Gelir & Gider", text: "Nereye ne kadar harcadığını, ne kadar kazandığını tek ekranda gör." },
+    { icon: "💳", title: "Kart & Hesap", text: "Kredi kartı bakiyeni takip et, son ödeme gününden önce hatırlat." },
+    { icon: "🎯", title: "Bütçe", text: "Kategori bazlı aylık limit koy, aşınca anında uyarı al." },
+    { icon: "🤝", title: "Borç & Alacak", text: "Kime borcun var, kimden alacağın var — tek listede." },
+    { icon: "🚜", title: "Filo & Envanter", text: "İşletmen varsa araç/makine ve stok takibini de aynı yerden yönet." },
+    { icon: "📊", title: "Grafikli Özet", text: "Harcama dağılımını basit bir pasta grafikte gör." },
+  ];
+  const STEPS = [
+    { n: "1", title: "Üye Ol", text: "E-posta ve şifreyle saniyeler içinde ücretsiz hesap aç." },
+    { n: "2", title: "Bilgilerini Gir", text: "Gelir, gider, kart ve varsa araçlarını ekle." },
+    { n: "3", title: "Her Yerden Takip Et", text: "Telefon, bilgisayar — nereden girersen gir aynı veriyi görürsün." },
+  ];
+
+  return (
+    <div style={{ fontFamily: "'Inter',sans-serif", background: C.bg, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 20 }}>
+        <img src="/logo-cebim.png" alt="Cebim" style={{ height: 34 }} />
+        <button onClick={onStart} style={bs(C.navy, "#fff", { padding: "10px 20px" })}>Giriş Yap</button>
+      </div>
+
+      <div style={{ textAlign: "center", padding: "60px 20px 40px", background: "linear-gradient(180deg,#EEF3FF,transparent)" }}>
+        <img src="/logo-cebim.png" alt="Cebim" style={{ height: 90, marginBottom: 18 }} />
+        <div style={{ fontSize: 17, color: C.smoke, maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>
+          Gelir, gider, kart, bütçe ve borç takibini tek yerden yönet. Bireysel kullan ya da işletmenin
+          filo ve envanterini de aynı sistemde tut — herkes için basit, herkes için ücretsiz başlangıç.
+        </div>
+        <button onClick={onStart} style={{ ...bs(C.green, "#fff", { padding: "14px 32px", fontSize: 15, marginTop: 28 }) }}>Ücretsiz Başla →</button>
+      </div>
+
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "20px 24px 60px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16, marginBottom: 60 }}>
+          {FEATURES.map((f) => (
+            <div key={f.title} style={cardSt({ padding: 22 })}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: C.navy, marginBottom: 6 }}>{f.title}</div>
+              <div style={{ fontSize: 13, color: C.smoke, lineHeight: 1.5 }}>{f.text}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", fontSize: 22, fontWeight: 900, color: C.navy, marginBottom: 30 }}>Nasıl Çalışır?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 20, marginBottom: 60 }}>
+          {STEPS.map((s) => (
+            <div key={s.n} style={{ textAlign: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.navy, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, margin: "0 auto 12px" }}>{s.n}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.navy, marginBottom: 6 }}>{s.title}</div>
+              <div style={{ fontSize: 13, color: C.smoke, lineHeight: 1.5 }}>{s.text}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", fontSize: 22, fontWeight: 900, color: C.navy, marginBottom: 20 }}>Nereden Kullanmak İstersin?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
+          <div style={cardSt({ padding: 24, textAlign: "center" })}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>🌐</div>
+            <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Web'de Kullan</div>
+            <button onClick={onStart} style={{ ...bs(C.navy, "#fff"), width: "100%" }}>Hemen Başla</button>
+          </div>
+          <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>🖥️</div>
+            <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Windows</div>
+            <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
+          </div>
+          <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
+            <div style={{ fontSize: 30, marginBottom: 10 }}>📱</div>
+            <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Android</div>
+            <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: "center", padding: "20px", color: C.smoke, fontSize: 12, borderTop: `1px solid ${C.border}` }}>
+        Cebim resmi bir muhasebe sistemi değildir, kişisel takip aracıdır.
       </div>
     </div>
   );
@@ -1127,6 +1210,7 @@ function Dashboard({ araclar, calismaKayitlari, giderler, gelirler, envanter, ha
 // ─── ANA UYGULAMA ─────────────────────────────────────────────────────────────
 export default function FiloTakip() {
   const [session, setSession] = useState(undefined); // undefined = kontrol ediliyor, null = giriş yok
+  const [showAuth, setShowAuth] = useState(false);
   const [active, setActive] = useState("dashboard");
   const [loading, setLoading] = useState(false);
   const [araclar, setAraclar] = useState([]);
@@ -1168,9 +1252,9 @@ export default function FiloTakip() {
 
   useEffect(() => { if (session) loadAll(); }, [session]);
 
-  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>💰 Yükleniyor...</div>;
-  if (!session) return <AuthScreen onAuthed={() => {}} />;
-  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>💰 Cebim yükleniyor...</div>;
+  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}><img src="/icon-192.png" alt="" style={{ height: 32, marginRight: 10 }} /> Yükleniyor...</div>;
+  if (!session) return showAuth ? <AuthScreen onAuthed={() => {}} onBack={() => setShowAuth(false)} /> : <LandingPage onStart={() => setShowAuth(true)} />;
+  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}><img src="/icon-192.png" alt="" style={{ height: 32, marginRight: 10 }} /> Cebim yükleniyor...</div>;
 
   const TABS = [
     { key: "dashboard", icon: "📊", label: "Ana Sayfa" },
@@ -1190,8 +1274,9 @@ export default function FiloTakip() {
   return (
     <div style={{ fontFamily: "'Inter','Helvetica Neue',sans-serif", background: C.bg, minHeight: "100vh", color: C.navy, display: "flex", flexDirection: "column" }}>
       <div style={{ background: C.navy, padding: "0 24px", display: "flex", alignItems: "center", height: 56, flexShrink: 0, position: "sticky", top: 0, zIndex: 50, overflowX: "auto" }}>
-        <div style={{ marginRight: 20, paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
-          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>💰 Cebim</div>
+        <div style={{ marginRight: 20, paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)", flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <img src="/icon-192.png" alt="Cebim" style={{ height: 26, width: 26 }} />
+          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>Cebim</div>
         </div>
         <div style={{ display: "flex", gap: 4, flex: 1 }}>
           {TABS.map((t) => (

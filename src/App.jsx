@@ -148,15 +148,105 @@ function AuthScreen({ onAuthed, onBack }) {
   );
 }
 
+function WalletIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#2ECC71">
+      <path d="M3 7a2 2 0 0 1 2-2h11l3 3v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+      <path d="M16 5H5a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h13" fill="#27AE60" />
+      <circle cx="17" cy="13" r="1.8" fill="#fff" />
+    </svg>
+  );
+}
+function CardIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#3498DB">
+      <rect x="2" y="5" width="20" height="14" rx="2.5" />
+      <rect x="2" y="8.5" width="20" height="3" fill="#1B2E4B" />
+      <rect x="4.5" y="14.5" width="6" height="2" rx="1" fill="#fff" />
+    </svg>
+  );
+}
+function TargetIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#9B59B6" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.2" />
+      <circle cx="12" cy="12" r="1.6" fill="#9B59B6" stroke="none" />
+    </svg>
+  );
+}
+function ScaleIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#E67E22">
+      <rect x="11" y="2" width="2" height="15" rx="1" />
+      <path d="M4 6h5l-2.5 5.5z" />
+      <path d="M15 6h5l-2.5 5.5z" />
+      <path d="M1.5 11.5a2.5 4 0 0 0 5 0z" />
+      <path d="M16.5 11.5a2.5 4 0 0 0 5 0z" />
+      <rect x="7" y="19" width="10" height="2" rx="1" />
+      <rect x="11" y="17" width="2" height="3" />
+    </svg>
+  );
+}
+function CarIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#3498DB">
+      <path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5z" />
+      <circle cx="7" cy="17" r="1.6" fill="#1B2E4B" />
+      <circle cx="17" cy="17" r="1.6" fill="#1B2E4B" />
+    </svg>
+  );
+}
+function ChartBarsIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="3" y="12" width="4" height="9" rx="1" fill="#3498DB" />
+      <rect x="10" y="7" width="4" height="14" rx="1" fill="#2ECC71" />
+      <rect x="17" y="3" width="4" height="18" rx="1" fill="#E67E22" />
+    </svg>
+  );
+}
+function GlobeIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#1B2E4B" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <path d="M3 12h18M4.5 7h15M4.5 17h15" />
+    </svg>
+  );
+}
+
+function WindowsIcon({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+      <rect x="13" y="1" width="10" height="10" fill="#7FBA00" />
+      <rect x="1" y="13" width="10" height="10" fill="#00A4EF" />
+      <rect x="13" y="13" width="10" height="10" fill="#FFB900" />
+    </svg>
+  );
+}
+
+function AndroidIcon({ size = 30 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#3DDC84">
+      <path d="M6.5 8.5v6a1 1 0 0 0 2 0v-6a1 1 0 0 0-2 0zM15.5 8.5v6a1 1 0 0 0 2 0v-6a1 1 0 0 0-2 0zM8 9v8a1.2 1.2 0 0 0 1.2 1.2h.3v2.3a1 1 0 0 0 2 0v-2.3h1v2.3a1 1 0 0 0 2 0v-2.3h.3A1.2 1.2 0 0 0 16 17V9H8z" />
+      <path d="M8.3 7.2c.1-1.6 1.2-2.9 2.7-3.4l-.8-1.4a.35.35 0 0 1 .6-.35l.85 1.47a5.3 5.3 0 0 1 2.7 0l.85-1.47a.35.35 0 0 1 .6.35l-.8 1.4c1.5.5 2.6 1.8 2.7 3.4H8.3z" />
+      <circle cx="10.3" cy="6" r="0.6" fill="#fff" />
+      <circle cx="13.7" cy="6" r="0.6" fill="#fff" />
+    </svg>
+  );
+}
+
 // ─── AÇILIŞ SAYFASI (LANDING) ────────────────────────────────────────────────
 function LandingPage({ onStart }) {
   const FEATURES = [
-    { icon: "💸", title: "Gelir & Gider", text: "Nereye ne kadar harcadığını, ne kadar kazandığını tek ekranda gör." },
-    { icon: "💳", title: "Kart & Hesap", text: "Kredi kartı bakiyeni takip et, son ödeme gününden önce hatırlat." },
-    { icon: "🎯", title: "Bütçe", text: "Kategori bazlı aylık limit koy, aşınca anında uyarı al." },
-    { icon: "🤝", title: "Borç & Alacak", text: "Kime borcun var, kimden alacağın var — tek listede." },
-    { icon: "🚜", title: "Filo & Envanter", text: "İşletmen varsa araç/makine ve stok takibini de aynı yerden yönet." },
-    { icon: "📊", title: "Grafikli Özet", text: "Harcama dağılımını basit bir pasta grafikte gör." },
+    { Icon: WalletIcon, title: "Gelir & Gider", text: "Nereye ne kadar harcadığını, ne kadar kazandığını tek ekranda gör." },
+    { Icon: CardIcon, title: "Kart & Hesap", text: "Kredi kartı bakiyeni takip et, son ödeme gününden önce hatırlat." },
+    { Icon: TargetIcon, title: "Bütçe", text: "Kategori bazlı aylık limit koy, aşınca anında uyarı al." },
+    { Icon: ScaleIcon, title: "Borç & Alacak", text: "Kime borcun var, kimden alacağın var — tek listede." },
+    { Icon: CarIcon, title: "Filo & Envanter", text: "İşletmen varsa araç/makine ve stok takibini de aynı yerden yönet." },
+    { Icon: ChartBarsIcon, title: "Grafikli Özet", text: "Harcama dağılımını basit bir pasta grafikte gör." },
   ];
   const STEPS = [
     { n: "1", title: "Üye Ol", text: "E-posta ve şifreyle saniyeler içinde ücretsiz hesap aç." },
@@ -184,7 +274,7 @@ function LandingPage({ onStart }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16, marginBottom: 60 }}>
           {FEATURES.map((f) => (
             <div key={f.title} style={cardSt({ padding: 22 })}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
+              <div style={{ marginBottom: 10 }}><f.Icon /></div>
               <div style={{ fontSize: 15, fontWeight: 800, color: C.navy, marginBottom: 6 }}>{f.title}</div>
               <div style={{ fontSize: 13, color: C.smoke, lineHeight: 1.5 }}>{f.text}</div>
             </div>
@@ -205,17 +295,17 @@ function LandingPage({ onStart }) {
         <div style={{ textAlign: "center", fontSize: 22, fontWeight: 900, color: C.navy, marginBottom: 20 }}>Nereden Kullanmak İstersin?</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 16 }}>
           <div style={cardSt({ padding: 24, textAlign: "center" })}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🌐</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><GlobeIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Web'de Kullan</div>
             <button onClick={onStart} style={{ ...bs(C.navy, "#fff"), width: "100%" }}>Hemen Başla</button>
           </div>
           <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🖥️</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><WindowsIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Windows</div>
             <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
           </div>
           <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>📱</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><AndroidIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Android</div>
             <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
           </div>

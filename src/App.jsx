@@ -109,9 +109,9 @@ function AuthScreen({ onAuthed }) {
     <div style={{ fontFamily: "'Inter',sans-serif", background: "linear-gradient(135deg,#1B2E4B,#243447)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🚜</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, letterSpacing: 1 }}>Kontrol Masası</div>
-          <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginTop: 4 }}>GELİR • GİDER • BÜTÇE • FİLO</div>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>💰</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: C.navy, letterSpacing: 1 }}>Cebim</div>
+          <div style={{ fontSize: 11, color: C.smoke, letterSpacing: 2, marginTop: 4 }}>GELİR • GİDER • BÜTÇE • KART</div>
         </div>
 
         <div style={{ display: "flex", gap: 6, marginBottom: 20, background: C.panel, borderRadius: 8, padding: 4 }}>
@@ -1168,9 +1168,9 @@ export default function FiloTakip() {
 
   useEffect(() => { if (session) loadAll(); }, [session]);
 
-  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 Yükleniyor...</div>;
+  if (session === undefined) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>💰 Yükleniyor...</div>;
   if (!session) return <AuthScreen onAuthed={() => {}} />;
-  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>🚜 Kontrol Masası yükleniyor...</div>;
+  if (loading) return <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.navy, fontSize: 18, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>💰 Cebim yükleniyor...</div>;
 
   const TABS = [
     { key: "dashboard", icon: "📊", label: "Ana Sayfa" },
@@ -1191,7 +1191,7 @@ export default function FiloTakip() {
     <div style={{ fontFamily: "'Inter','Helvetica Neue',sans-serif", background: C.bg, minHeight: "100vh", color: C.navy, display: "flex", flexDirection: "column" }}>
       <div style={{ background: C.navy, padding: "0 24px", display: "flex", alignItems: "center", height: 56, flexShrink: 0, position: "sticky", top: 0, zIndex: 50, overflowX: "auto" }}>
         <div style={{ marginRight: 20, paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}>
-          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>🚜 Kontrol Masası</div>
+          <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: 2, color: "#fff", lineHeight: 1 }}>💰 Cebim</div>
         </div>
         <div style={{ display: "flex", gap: 4, flex: 1 }}>
           {TABS.map((t) => (

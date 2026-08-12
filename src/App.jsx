@@ -302,12 +302,12 @@ function LandingPage({ onStart }) {
           <div style={cardSt({ padding: 24, textAlign: "center" })}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><WindowsIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Windows</div>
-            <a href="/downloads/Cebim-Windows-Kur.zip" download style={{ ...bs(C.navy, "#fff"), width: "100%", boxSizing: "border-box", display: "block", textDecoration: "none" }}>İndir</a>
+            <button onClick={onStart} style={{ ...bs(C.navy, "#fff"), width: "100%" }}>Üye Ol</button>
           </div>
           <div style={cardSt({ padding: 24, textAlign: "center" })}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><AndroidIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Android</div>
-            <a href="/downloads/Cebim.apk" download style={{ ...bs(C.navy, "#fff"), width: "100%", boxSizing: "border-box", display: "block", textDecoration: "none" }}>İndir</a>
+            <button onClick={onStart} style={{ ...bs(C.navy, "#fff"), width: "100%" }}>Üye Ol</button>
           </div>
         </div>
       </div>
@@ -1175,6 +1175,18 @@ function HakkindaView() {
           analiz eder ve kaydetmek istediğiniz hatırlatmaları size gösterir. Fatura kesmez, resmi belge üretmez, para
           transferi/ödeme işlemi yapmaz. Doğruluğu tamamen girdiğiniz verilere bağlıdır — resmi muhasebeniz için mali
           müşavirinizle çalışmaya devam etmelisiniz. Bu, işinizi kolaylaştıran kişisel bir takip aracıdır.
+        </div>
+      </div>
+
+      <div style={cardSt({ padding: 24 })}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: C.navy, marginBottom: 14 }}>Uygulamayı İndir</div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <a href="/downloads/CebimKur.exe" download style={{ ...bs(C.navy, "#fff"), textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}><WindowsIcon size={20} /> Windows'a İndir</a>
+          <a href="/downloads/Cebim.apk" download style={{ ...bs(C.navy, "#fff"), textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}><AndroidIcon size={20} /> Android'e İndir</a>
+        </div>
+        <div style={{ fontSize: 12, color: C.smoke, marginTop: 12, lineHeight: 1.5 }}>
+          Windows: indirdiğin dosyaya çift tıkla, çıkan güvenlik uyarısında "Yine de çalıştır" de.<br />
+          Android: indirdiğin dosyayı aç, "bilinmeyen kaynaklara izin ver" sorarsa onayla.
         </div>
       </div>
     </div>

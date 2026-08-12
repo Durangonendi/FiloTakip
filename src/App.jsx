@@ -299,15 +299,15 @@ function LandingPage({ onStart }) {
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Web'de Kullan</div>
             <button onClick={onStart} style={{ ...bs(C.navy, "#fff"), width: "100%" }}>Hemen Başla</button>
           </div>
-          <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
+          <div style={cardSt({ padding: 24, textAlign: "center" })}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><WindowsIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Windows</div>
-            <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
+            <a href="/downloads/Cebim-Windows-Kur.zip" download style={{ ...bs(C.navy, "#fff"), width: "100%", boxSizing: "border-box", display: "block", textDecoration: "none" }}>İndir</a>
           </div>
-          <div style={cardSt({ padding: 24, textAlign: "center", opacity: 0.6 })}>
+          <div style={cardSt({ padding: 24, textAlign: "center" })}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><AndroidIcon /></div>
             <div style={{ fontWeight: 800, color: C.navy, marginBottom: 10 }}>Android</div>
-            <div style={{ ...ob(C.smoke), width: "100%", boxSizing: "border-box", cursor: "default" }}>Yakında</div>
+            <a href="/downloads/Cebim.apk" download style={{ ...bs(C.navy, "#fff"), width: "100%", boxSizing: "border-box", display: "block", textDecoration: "none" }}>İndir</a>
           </div>
         </div>
       </div>
